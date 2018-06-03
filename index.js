@@ -27,7 +27,8 @@ exports.handler = function(event, context, callback) {
       Bucket: BUCKET,
       ContentType: 'application/json',
       Key: KEY
-    }, function(){
+    }, function(err){
+      if (err) return callback(err)
       callback(null, {
         statusCode: '301',
         headers: {'location': [BUCKET, KEY].join('/')},
