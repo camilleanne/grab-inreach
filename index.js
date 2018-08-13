@@ -12,6 +12,7 @@ const INREACHACCT = process.env.INREACHACCT
 const request = require('request')
 const togeojson = require('@mapbox/togeojson')
 const DOMParser = require('xmldom').DOMParser
+const simplify = require('@turf/simplify')
 
 exports.handler = function(event, context, callback) {
 
@@ -19,25 +20,41 @@ exports.handler = function(event, context, callback) {
     uri: 'https://inreach.garmin.com/feed/share/'+ INREACHACCT + '?d1=2018-06-01T06:19z',
     method: 'GET'
   }, function (err, res){
-    const kml = new DOMParser().parseFromString(res.body);
+    const kml = new DOMParser().parseFromString(res.body)
     let json = togeojson.kml(kml)
 
-    json.features = json.features.map(function(r){
-      const s = {}
-      s.type = r.type
-      s.geometry = r.geometry
-      s.properties = {}
-      s.properties['Latitude'] = r.properties['Latitude']
-      s.properties['Longitude'] = r.properties['Longitude']
-      s.properties['Time UTC'] = r.properties['Time UTC']
-      s.properties['Time'] = r.properties['Time']
-      s.properties['timestamp'] = r.properties['timestamp']
-      s.properties['Valid GPS Fix'] = r.properties['Valid GPS Fix']
-      return s
-    })
+    const trace = json.features.pop()
+    const options = {tolerance: 0.0025, highQuality: false}
+    const simplified = simplify(trace, options)
+    console.log('before', trace.geometry.coordinates.length, 'after', simplified.geometry.coordinates.length)
+
+    let output = {
+      'type': 'FeatureCollection',
+      'features': []
+    }
+
+    for (var i = 0; i < json.features.length; i ++) {
+      var point = json.features[i];
+      for (var x = 0; x < simplified.geometry.coordinates.length; x ++) {
+        var stringpoint = simplified.geometry.coordinates[x];
+        if (stringpoint[0] === point.geometry.coordinates[0] && stringpoint[1] === point.geometry.coordinates[1]) {
+          const s = {}
+          s['Latitude'] = point.properties['Latitude']
+          s['Longitude'] = point.properties['Longitude']
+          s['Time UTC'] = point.properties['Time UTC']
+          s['Time'] = point.properties['Time']
+          s['timestamp'] = point.properties['timestamp']
+          s['Valid GPS Fix'] = point.properties['Valid GPS Fix']
+          point.properties = s
+          output.features.push(point)
+        }
+      }
+    }
+
+    output.features.push(simplified)
 
     S3.putObject({
-      Body: Buffer.from(JSON.stringify(json, null, 2)),
+      Body: Buffer.from(JSON.stringify(output, null, 2)),
       Bucket: BUCKET,
       ContentType: 'application/json',
       Key: KEY
