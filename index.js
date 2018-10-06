@@ -68,26 +68,25 @@ exports.handler = function(event, context, callback) {
       Key: KEY
     }).promise()
      .then(()=>{
-        callback(null, {
-          statusCode: '301',
-          headers: {'location': [BUCKET, KEY].join('/')},
-          body: ''
+        S3.putObject({
+          Body: Buffer.from(JSON.stringify(latest, null, 2)),
+          Bucket: BUCKET,
+          Key: 'latest.json'
         })
+          .promise()
+          .then(()=>{
+            callback(null, {
+              statusCode: '301',
+              headers: {
+                'latest': [BUCKET, 'latest.json'].join('/'),
+                'realtime': [BUCKET, KEY].join('/')
+              },
+              body: ''
+            })
+         })
+        .catch(err => callback(err))
      })
      .catch(err => callback(err))
 
-    S3.putObject({
-      Body: Buffer.from(JSON.stringify(latest, null, 2)),
-      Bucket: BUCKET,
-      Key: 'latest.json'
-    }).promise()
-     .then(()=>{
-        callback(null, {
-          statusCode: '301',
-          headers: {'location': [BUCKET, 'latest.json'].join('/')},
-          body: ''
-        })
-     })
-     .catch(err => callback(err))
   })
 }
