@@ -17,9 +17,9 @@ const geobuf = require('geobuf')
 const Pbf = require('pbf')
 
 exports.handler = function(event, context, callback) {
-  const time = +new Date()
+
   request({
-    uri: 'https://inreach.garmin.com/feed/share/'+ INREACHACCT + '?d1=2018-10-01T06:19z',
+    uri: 'https://inreach.garmin.com/feed/share/'+ INREACHACCT + '?d1=2018-06-01T06:19z',
     method: 'GET'
   }, function (err, res){
     const kml = new DOMParser().parseFromString(res.body)
@@ -30,7 +30,7 @@ exports.handler = function(event, context, callback) {
     const simplified = simplify(trace, options)
 
     console.log('before', trace.geometry.coordinates.length, 'after', simplified.geometry.coordinates.length)
-    console.log('request', time - +new Date())
+
     let output = {
       'type': 'FeatureCollection',
       'features': []
@@ -54,23 +54,40 @@ exports.handler = function(event, context, callback) {
       }
     }
 
+    const latest = {
+      'type': 'FeatureCollection',
+      'features': [output.features[output.features.length -1]]
+    }
+
     output.features.push(simplified)
     const buffer = geobuf.encode(output, new Pbf());
-
-    console.log(typeof buffer)
 
     S3.putObject({
       Body: Buffer.from(buffer),
       Bucket: BUCKET,
       Key: KEY
-    }, function(err){
-      if (err) return callback(err)
-      console.log('total', time - +new Date())
-      callback(null, {
-        statusCode: '301',
-        headers: {'location': [BUCKET, KEY].join('/')},
-        body: ''
-      })
-    })
+    }).promise()
+     .then(()=>{
+        callback(null, {
+          statusCode: '301',
+          headers: {'location': [BUCKET, KEY].join('/')},
+          body: ''
+        })
+     })
+     .catch(err => callback(err))
+
+    S3.putObject({
+      Body: Buffer.from(JSON.stringify(latest, null, 2)),
+      Bucket: BUCKET,
+      Key: 'latest.json'
+    }).promise()
+     .then(()=>{
+        callback(null, {
+          statusCode: '301',
+          headers: {'location': [BUCKET, 'latest.json'].join('/')},
+          body: ''
+        })
+     })
+     .catch(err => callback(err))
   })
 }
