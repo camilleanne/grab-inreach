@@ -13,6 +13,8 @@ const request = require('request')
 const togeojson = require('@mapbox/togeojson')
 const DOMParser = require('xmldom').DOMParser
 const simplify = require('@turf/simplify')
+const geobuf = require('geobuf')
+const Pbf = require('pbf')
 
 exports.handler = function(event, context, callback) {
 
@@ -26,6 +28,7 @@ exports.handler = function(event, context, callback) {
     const trace = json.features.pop()
     const options = {tolerance: 0.0025, highQuality: false}
     const simplified = simplify(trace, options)
+
     console.log('before', trace.geometry.coordinates.length, 'after', simplified.geometry.coordinates.length)
 
     let output = {
@@ -51,20 +54,39 @@ exports.handler = function(event, context, callback) {
       }
     }
 
+    const latest = {
+      'type': 'FeatureCollection',
+      'features': [output.features[output.features.length -1]]
+    }
+
     output.features.push(simplified)
+    const buffer = geobuf.encode(output, new Pbf());
 
     S3.putObject({
-      Body: Buffer.from(JSON.stringify(output, null, 2)),
+      Body: Buffer.from(buffer),
       Bucket: BUCKET,
-      ContentType: 'application/json',
       Key: KEY
-    }, function(err){
-      if (err) return callback(err)
-      callback(null, {
-        statusCode: '301',
-        headers: {'location': [BUCKET, KEY].join('/')},
-        body: ''
-      })
-    })
+    }).promise()
+     .then(()=>{
+        S3.putObject({
+          Body: Buffer.from(JSON.stringify(latest, null, 2)),
+          Bucket: BUCKET,
+          Key: 'latest.json'
+        })
+          .promise()
+          .then(()=>{
+            callback(null, {
+              statusCode: '301',
+              headers: {
+                'latest': [BUCKET, 'latest.json'].join('/'),
+                'realtime': [BUCKET, KEY].join('/')
+              },
+              body: ''
+            })
+         })
+        .catch(err => callback(err))
+     })
+     .catch(err => callback(err))
+
   })
 }

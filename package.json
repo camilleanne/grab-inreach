@@ -12,6 +12,8 @@
     "@mapbox/togeojson": "^0.16.0",
     "@turf/simplify": "^5.1.5",
     "aws-sdk": "^2.250.1",
+    "geobuf": "^3.0.1",
+    "pbf": "^3.1.0",
     "request": "^2.87.0",
     "xmldom": "^0.1.27"
   }
