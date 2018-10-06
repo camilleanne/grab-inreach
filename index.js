@@ -13,11 +13,13 @@ const request = require('request')
 const togeojson = require('@mapbox/togeojson')
 const DOMParser = require('xmldom').DOMParser
 const simplify = require('@turf/simplify')
+const geobuf = require('geobuf')
+const Pbf = require('pbf')
 
 exports.handler = function(event, context, callback) {
-
+  const time = +new Date()
   request({
-    uri: 'https://inreach.garmin.com/feed/share/'+ INREACHACCT + '?d1=2018-06-01T06:19z',
+    uri: 'https://inreach.garmin.com/feed/share/'+ INREACHACCT + '?d1=2018-10-01T06:19z',
     method: 'GET'
   }, function (err, res){
     const kml = new DOMParser().parseFromString(res.body)
@@ -26,8 +28,9 @@ exports.handler = function(event, context, callback) {
     const trace = json.features.pop()
     const options = {tolerance: 0.0025, highQuality: false}
     const simplified = simplify(trace, options)
-    console.log('before', trace.geometry.coordinates.length, 'after', simplified.geometry.coordinates.length)
 
+    console.log('before', trace.geometry.coordinates.length, 'after', simplified.geometry.coordinates.length)
+    console.log('request', time - +new Date())
     let output = {
       'type': 'FeatureCollection',
       'features': []
@@ -52,14 +55,17 @@ exports.handler = function(event, context, callback) {
     }
 
     output.features.push(simplified)
+    const buffer = geobuf.encode(output, new Pbf());
+
+    console.log(typeof buffer)
 
     S3.putObject({
-      Body: Buffer.from(JSON.stringify(output, null, 2)),
+      Body: Buffer.from(buffer),
       Bucket: BUCKET,
-      ContentType: 'application/json',
       Key: KEY
     }, function(err){
       if (err) return callback(err)
+      console.log('total', time - +new Date())
       callback(null, {
         statusCode: '301',
         headers: {'location': [BUCKET, KEY].join('/')},
