@@ -35,11 +35,13 @@ exports.handler = function(event, context, callback) {
       'type': 'FeatureCollection',
       'features': []
     }
+    const jsonLength = json.features.length
 
-    for (var i = 0; i < json.features.length; i ++) {
-      var point = json.features[i];
-      for (var x = 0; x < simplified.geometry.coordinates.length; x ++) {
-        var stringpoint = simplified.geometry.coordinates[x];
+    for (var i = 0; i < jsonLength; i ++) {
+      var point = json.features[i]
+      const simpLength = simplified.geometry.coordinates.length
+      for (var x = 0; x < simpLength; x ++) {
+        var stringpoint = simplified.geometry.coordinates[x]
         if (stringpoint[0] === point.geometry.coordinates[0] && stringpoint[1] === point.geometry.coordinates[1]) {
           const s = {}
           s['Latitude'] = point.properties['Latitude']
@@ -60,7 +62,7 @@ exports.handler = function(event, context, callback) {
     }
 
     output.features.push(simplified)
-    const buffer = geobuf.encode(output, new Pbf());
+    const buffer = geobuf.encode(output, new Pbf())
 
     S3.putObject({
       Body: Buffer.from(buffer),
@@ -87,6 +89,5 @@ exports.handler = function(event, context, callback) {
         .catch(err => callback(err))
      })
      .catch(err => callback(err))
-
   })
 }
