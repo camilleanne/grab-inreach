@@ -16,10 +16,10 @@ const DOMParser = require('xmldom').DOMParser
 exports.handler = function(event, context, callback) {
 
   request({
-    uri: 'https://inreach.garmin.com/feed/share/'+ INREACHACCT + '?d1=2012-10-16T06:19z',
+    uri: 'https://inreach.garmin.com/feed/share/'+ INREACHACCT + '?d1=' + STARTDATE + 'T00:00z',
     method: 'GET'
   }, function (err, res){
-    const kml = new DOMParser().parseFromString(res.body);
+    const kml = new DOMParser().parseFromString(res.body)
     const json = togeojson.kml(kml)
 
     S3.putObject({
