@@ -8,12 +8,19 @@ const S3 = new AWS.S3({
 const BUCKET = process.env.BUCKET
 const KEY = process.env.KEY
 const INREACHACCT = process.env.INREACHACCT
+const STARTDATE = process.env.STARTDATE
 
 const request = require('request')
 const togeojson = require('@mapbox/togeojson')
 const DOMParser = require('xmldom').DOMParser
 
 exports.handler = function(event, context, callback) {
+  let missing = []
+  if (!BUCKET) missing.push('BUCKET')
+  if (!KEY) missing.push('KEY')
+  if (!INREACHACCT) missing.push('INREACHACCT')
+  if (!STARTDATE) missing.push('STARTDATE')
+  if (missing.length) return callback(new Error('missing environment variable(s): ' + missing.toString()))
 
   request({
     uri: 'https://inreach.garmin.com/feed/share/'+ INREACHACCT + '?d1=' + STARTDATE + 'T00:00z',
