@@ -2,6 +2,8 @@
 
 A lambda function for scooping up the KML files from the Garmin InReach shared feed, converting to GeoJSON, and dumping it on S3.
 
+For a version of this script that simplifies geometries and outputs a `geobuf` instead of `GeoJSON` see the [simplify](https://github.com/camilleanne/grab-inreach/tree/simplify) branch.
+
 ### deploy
 
 1. create a lambda function on AWS with a Cloudwatch scheduled trigger (InReach defaults to sending a new point every 10m, my script is scheduled for once an hour)
