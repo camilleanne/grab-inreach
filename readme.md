@@ -2,6 +2,10 @@
 
 A lambda function for scooping up the KML files from the Garmin InReach shared feed, converting to GeoJSON, and dumping it on S3.
 
+The KML traces can get very large very quickly making them expensive to download and visualize. This branch extends the master branch by simplifiying the geometry with [@turf/simplify](https://www.npmjs.com/package/@turf/simplify) and compressing the final product as a geobuf using [@mapbox/geobuf](https://github.com/mapbox/geobuf).
+
+These changes make the use of the final geometries much cheaper, but at higher processing costs. Depending on your usage you'll need to increase the time and memory available to your lamdba function.
+
 ### deploy
 
 1. create a lambda function on AWS with a Cloudwatch scheduled trigger (InReach defaults to sending a new point every 10m, my script is scheduled for once an hour)
